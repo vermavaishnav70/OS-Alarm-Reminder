@@ -4,7 +4,7 @@
 
 # 🧠 Project Overview
 
-The **Alarm and Reminder System** is a Phase-1 Operating Systems project designed to simulate how an OS handles **time-based task scheduling and event triggering**.
+The **Alarm and Reminder System** is a Operating Systems project designed to simulate how an OS handles **time-based task scheduling and event triggering**.
 
 This system allows users to set multiple reminders that trigger at specific times. The program continuously checks the system clock and executes reminders when their scheduled time arrives.
 
