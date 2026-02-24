@@ -1,0 +1,14 @@
+fastapi>=0.111.0
+uvicorn[standard]>=0.29.0
+pydantic>=2.0.0
+python-multipart>=0.0.9
+
+# Optional — better audio playback
+# Install at least one:
+numpy>=1.26.0
+sounddevice>=0.4.6
+# simpleaudio>=1.0.4   # alternative to sounddevice
+
+# zoneinfo is stdlib in Python 3.9+
+# For Python 3.8 uncomment below:
+# backports.zoneinfo
