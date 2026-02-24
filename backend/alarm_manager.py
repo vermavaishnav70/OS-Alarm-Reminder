@@ -45,14 +45,14 @@ class AlarmManager:
         """
         self._alarms: Dict[str, Alarm] = {}
         self._players: Dict[str, AlarmPlayer] = {}
-        self._lock    = threading.Lock()           # Mutex
-        self._running = threading.Event()          # Lifecycle semaphore
+        self._lock    = threading.Lock()           
+        self._running = threading.Event()          
         self._on_ring = on_ring
 
-        # Load persisted alarms from disk
+        
         self._load()
 
-        # Start the tick thread (daemon → OS cleans up on exit)
+        
         self._tick_thread = threading.Thread(
             target=self._tick_loop,
             daemon=True,

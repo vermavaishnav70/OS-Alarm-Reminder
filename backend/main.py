@@ -25,20 +25,13 @@ from datetime import datetime
 from typing import List
 from zoneinfo import ZoneInfo
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, UploadFile, File
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 
 from models import Alarm, AlarmCreate, AlarmUpdate, Task, TaskCreate, TaskUpdate
 from alarm_manager import AlarmManager
 from task_manager import TaskManager
-from sound_engine import (
-    SOUND_PROFILES,
-    CUSTOM_SOUNDS_DIR,
-    add_custom_sound,
-    delete_custom_sound,
-    get_all_sounds,
-)
+from sound_engine import SOUND_PROFILES
 
 # ── WebSocket connection registry ─────────────────────────────────────────────
 
@@ -144,9 +137,6 @@ async def websocket_endpoint(ws: WebSocket):
 def list_alarms():
     return alarm_mgr.get_all()
 
-@app.get("/", response_model=dict)
-def root():
-    return {"message": "Welcome to Chronos OS! Visit /docs for API documentation."}
 
 @app.post("/api/alarms", response_model=Alarm, status_code=201)
 def create_alarm(body: AlarmCreate):
@@ -215,48 +205,14 @@ def delete_task(task_id: str):
         raise HTTPException(status_code=404, detail="Task not found")
 
 
-# ── Sound list & custom sound management ────────────────────────────────────
+# ── Sound list ────────────────────────────────────────────────────────────────
 
 @app.get("/api/sounds")
 def list_sounds():
-    return get_all_sounds()
-
-
-@app.post("/api/sounds/upload", status_code=201)
-async def upload_custom_sound(
-    name: str,
-    file: UploadFile = File(...),
-):
-    """Upload a custom sound file (wav / mp3 / ogg / m4a / aac)."""
-    ALLOWED = {".wav", ".mp3", ".ogg", ".m4a", ".aac", ".flac"}
-    suffix = os.path.splitext(file.filename or "")[1].lower()
-    if suffix not in ALLOWED:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported file type '{suffix}'. Allowed: {', '.join(sorted(ALLOWED))}"
-        )
-    if not name.strip():
-        raise HTTPException(status_code=400, detail="Sound name must not be empty.")
-    if name in SOUND_PROFILES:
-        raise HTTPException(status_code=409, detail=f"'{name}' is a built-in sound name.")
-
-    # Sanitise filename to prevent path traversal
-    safe_filename = f"{name.replace(' ', '_')}{suffix}"
-    dest = CUSTOM_SOUNDS_DIR / safe_filename
-    contents = await file.read()
-    dest.write_bytes(contents)
-
-    entry = add_custom_sound(name, safe_filename, f"Custom: {file.filename}")
-    return {"name": name, "filename": safe_filename, **entry}
-
-
-@app.delete("/api/sounds/{sound_name}", status_code=204)
-def remove_custom_sound(sound_name: str):
-    """Delete a custom (user-uploaded) sound."""
-    if sound_name in SOUND_PROFILES:
-        raise HTTPException(status_code=400, detail="Cannot delete built-in sounds.")
-    if not delete_custom_sound(sound_name):
-        raise HTTPException(status_code=404, detail="Custom sound not found.")
+    return [
+        {"name": name, "description": cfg["description"]}
+        for name, cfg in SOUND_PROFILES.items()
+    ]
 
 
 # ── World clock ───────────────────────────────────────────────────────────────
