@@ -10,7 +10,7 @@ services:
         value: 3.10.0
 
   # Frontend (Static Site)
-  - type: static
+  - type: static_site
     name: chronos-frontend
     env: static
     buildCommand: cd frontend && npm install && npm run build
