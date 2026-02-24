@@ -3,6 +3,7 @@
 An operating-systems course project demonstrating core OS concepts through a
 real-world alarm & reminder application.
 
+
 ```
 chronos-os/
 ├── backend/                   ← Python (FastAPI) — OS-level logic
