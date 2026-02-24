@@ -25,7 +25,8 @@ from datetime import datetime
 from typing import List
 from zoneinfo import ZoneInfo
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, UploadFile, File
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
 from models import Alarm, AlarmCreate, AlarmUpdate, Task, TaskCreate, TaskUpdate
@@ -67,8 +68,10 @@ ws_manager = ConnectionManager()
 
 def _alarm_ring_callback(alarm_id: str):
     """Called by AlarmManager (on a background thread) when an alarm fires."""
+    alarm = alarm_mgr.get(alarm_id)
+    sound_name = alarm.sound if alarm else "Classic Beep"
     asyncio.run_coroutine_threadsafe(
-        ws_manager.broadcast({"event": "alarm_ring", "alarm_id": alarm_id}),
+        ws_manager.broadcast({"event": "alarm_ring", "alarm_id": alarm_id, "sound": sound_name}),
         _event_loop
     )
 
@@ -114,6 +117,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ── Static Files (for custom sounds) ─────────────────────────────────────────
+
+from sound_engine import CUSTOM_SOUNDS_DIR
+
+app.mount("/api/sounds/files", StaticFiles(directory=str(CUSTOM_SOUNDS_DIR)), name="custom_sounds")
 
 
 # ── WebSocket endpoint ────────────────────────────────────────────────────────
@@ -166,18 +176,6 @@ def dismiss_alarm(alarm_id: str):
     return alarm
 
 
-@app.post("/api/alarms/{alarm_id}/test")
-def test_alarm_sound(alarm_id: str):
-    """Play the alarm sound once for preview."""
-    alarm = alarm_mgr.get(alarm_id)
-    if not alarm:
-        raise HTTPException(status_code=404, detail="Alarm not found")
-    from sound_engine import play_sound_once
-    import threading
-    threading.Thread(target=play_sound_once, args=(alarm.sound,), daemon=True).start()
-    return {"status": "playing", "sound": alarm.sound}
-
-
 # ── Task endpoints ────────────────────────────────────────────────────────────
 
 @app.get("/api/tasks", response_model=list[Task])
@@ -209,10 +207,36 @@ def delete_task(task_id: str):
 
 @app.get("/api/sounds")
 def list_sounds():
-    return [
-        {"name": name, "description": cfg["description"]}
-        for name, cfg in SOUND_PROFILES.items()
-    ]
+    from sound_engine import get_all_sounds
+    return get_all_sounds()
+
+@app.post("/api/sounds", status_code=201)
+async def upload_sound(name: str, file: UploadFile = File(...)):
+    """Upload a custom audio file."""
+    if not name.strip() or not file.filename:
+        raise HTTPException(status_code=400, detail="Invalid name or file")
+
+    safe_name = name.strip()
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in {".wav", ".mp3", ".ogg", ".m4a", ".aac", ".flac"}:
+        raise HTTPException(status_code=400, detail="Unsupported audio format")
+
+    filename = f"{safe_name.replace(' ', '_')}{ext}"
+    file_path = CUSTOM_SOUNDS_DIR / filename
+    
+    # Save the file to disk
+    contents = await file.read()
+    with open(file_path, "wb") as f:
+        f.write(contents)
+
+    from sound_engine import add_custom_sound
+    return add_custom_sound(safe_name, filename, description="Uploaded custom sound")
+
+@app.delete("/api/sounds/{name}", status_code=204)
+def delete_sound(name: str):
+    from sound_engine import delete_custom_sound
+    if not delete_custom_sound(name):
+        raise HTTPException(status_code=404, detail="Custom sound not found")
 
 
 # ── World clock ───────────────────────────────────────────────────────────────

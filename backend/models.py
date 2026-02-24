@@ -29,6 +29,7 @@ class AlarmCreate(BaseModel):
 
 
 class AlarmUpdate(BaseModel):
+    time: Optional[str] = None
     active: Optional[bool] = None
     label: Optional[str] = None
     sound: Optional[str] = None

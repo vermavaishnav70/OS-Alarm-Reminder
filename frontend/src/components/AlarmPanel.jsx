@@ -1,14 +1,23 @@
-// src/components/AlarmPanel.jsx
 import { useState, useEffect } from "react";
 import { alarmApi, soundApi } from "../api/client";
+import { Howl } from "howler";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+const soundMap = {
+  "Classic Beep": "/sounds/classic_beep.wav",
+  "Gentle Bell": "/sounds/gentle_bell.wav",
+  "Alarm Siren": "/sounds/alarm_siren.wav",
+  "Digital Pulse": "/sounds/digital_pulse.wav",
+  "Deep Horn": "/sounds/deep_horn.wav"
+};
 
 export default function AlarmPanel({ ringingIds, onDismiss }) {
   const [alarms, setAlarms] = useState([]);
   const [sounds, setSounds] = useState([]);
   const [showAdd, setShowAdd] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({
     time: "", label: "", sound: "Classic Beep", repeat: [], active: true,
   });
@@ -44,12 +53,30 @@ export default function AlarmPanel({ ringingIds, onDismiss }) {
       repeat: f.repeat.includes(d) ? f.repeat.filter(x => x !== d) : [...f.repeat, d],
     }));
 
-  const handleAdd = async () => {
+  const handleSubmit = async () => {
     if (!form.time) return;
-    const created = await alarmApi.create(form);
-    setAlarms(a => [...a, created]);
+    if (editingId) {
+      const updated = await alarmApi.update(editingId, form);
+      setAlarms(a => a.map(x => x.id === editingId ? updated : x));
+    } else {
+      const created = await alarmApi.create(form);
+      setAlarms(a => [...a, created]);
+    }
     setForm({ time: "", label: "", sound: "Classic Beep", repeat: [], active: true });
     setShowAdd(false);
+    setEditingId(null);
+  };
+
+  const startEdit = (alarm) => {
+    setForm({
+      time: alarm.time,
+      label: alarm.label,
+      sound: alarm.sound,
+      repeat: alarm.repeat,
+      active: alarm.active,
+    });
+    setEditingId(alarm.id);
+    setShowAdd(true);
   };
 
   const handleToggle = async (alarm) => {
@@ -67,8 +94,6 @@ export default function AlarmPanel({ ringingIds, onDismiss }) {
     setAlarms(a => a.map(x => x.id === id ? { ...x, ringing: false } : x));
     onDismiss(id);
   };
-
-  const handleTest = (id) => alarmApi.test(id);
 
   const handleUpload = async () => {
     if (!uploadName.trim() || !uploadFile) return;
@@ -92,6 +117,27 @@ export default function AlarmPanel({ ringingIds, onDismiss }) {
     await soundApi.delete(name);
     setSounds(s => s.filter(x => x.name !== name));
     if (form.sound === name) setForm(f => ({ ...f, sound: "Classic Beep" }));
+  };
+
+  const handleTest = (soundName) => {
+    let soundFile = soundMap[soundName];
+    if (!soundFile) {
+      // Find the sound object to get the real filename from the backend
+      const soundObj = sounds.find(s => s.name === soundName);
+      if (soundObj && soundObj.custom && soundObj.filename) {
+        const backendAPI = import.meta.env.VITE_API_URL || "http://localhost:8000";
+        soundFile = `${backendAPI}/api/sounds/files/${soundObj.filename}`;
+      } else {
+        soundFile = "/sounds/classic_beep.wav"; // Fallback
+      }
+    }
+
+    const howl = new Howl({
+      src: [soundFile],
+      volume: 1.0,
+      format: ['wav', 'mp3', 'ogg', 'm4a', 'aac', 'flac']
+    });
+    howl.play();
   };
 
   const ringing = alarms.filter(a => a.ringing);
@@ -189,7 +235,7 @@ export default function AlarmPanel({ ringingIds, onDismiss }) {
       {/* Add form */}
       {showAdd && (
         <div className="panel" style={{ marginBottom: 20, borderColor: "#f59e0b44" }}>
-          <div className="panel-title">// CONFIGURE NEW ALARM</div>
+          <div className="panel-title">{editingId ? "// EDIT ALARM" : "// CONFIGURE NEW ALARM"}</div>
           <div className="two-col">
             <div className="input-group">
               <label className="input-label">TIME</label>
@@ -230,8 +276,8 @@ export default function AlarmPanel({ ringingIds, onDismiss }) {
             </div>
           </div>
           <div style={{ display: "flex", gap: 10 }}>
-            <button className="btn btn-primary" onClick={handleAdd}>SET ALARM</button>
-            <button className="btn btn-ghost" onClick={() => setShowAdd(false)}>CANCEL</button>
+            <button className="btn btn-primary" onClick={handleSubmit}>{editingId ? "SAVE CHANGES" : "SET ALARM"}</button>
+            <button className="btn btn-ghost" onClick={() => { setShowAdd(false); setEditingId(null); }}>CANCEL</button>
           </div>
         </div>
       )}
@@ -253,9 +299,11 @@ export default function AlarmPanel({ ringingIds, onDismiss }) {
                 ))}
             </div>
           </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
             <button className="btn btn-ghost" style={{ fontSize: "14px", padding: "8px 12px" }}
-              onClick={() => handleTest(alarm.id)} title="Test sound">▶</button>
+              onClick={() => handleTest(alarm.sound)} title="Test sound">▶</button>
+            <button className="btn btn-ghost" style={{ fontSize: "14px", padding: "8px 12px" }}
+              onClick={() => startEdit(alarm)} title="Edit alarm">✎</button>
             {alarm.ringing && (
               <button className="btn btn-danger" onClick={() => handleDismiss(alarm.id)}>DISMISS</button>
             )}

@@ -21,7 +21,6 @@ from datetime import datetime
 from typing import Dict, Optional, Callable
 
 from models import Alarm
-from sound_engine import AlarmPlayer
 import storage
 
 # Day-of-week mapping
@@ -149,17 +148,14 @@ class AlarmManager:
             time.sleep(1)
 
     def _fire(self, alarm: Alarm):
-        """Start an AlarmPlayer thread and mark alarm as ringing."""
-        player = AlarmPlayer(alarm.sound)
+        """Mark alarm as ringing and notify the frontend."""
         with self._lock:
-            self._players[alarm.id] = player
             alarm.ringing = True
-
-        player.start()
 
         # Notify connected clients (e.g. WebSocket broadcast)
         if self._on_ring:
             try:
+                # The frontend will handle playing the sound locally
                 self._on_ring(alarm.id)
             except Exception:
                 pass
@@ -167,10 +163,8 @@ class AlarmManager:
         self._persist()
 
     def _stop_player(self, alarm_id: str):
-        with self._lock:
-            player = self._players.pop(alarm_id, None)
-        if player:
-            player.stop()   # Sets threading.Event → thread exits cleanly
+        # We no longer manage background audio threads on the backend.
+        pass
 
     def _load(self):
         rows = storage.load_alarms()

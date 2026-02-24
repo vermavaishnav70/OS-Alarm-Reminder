@@ -22,29 +22,29 @@ async function request(method, path, body) {
   return res.json();
 }
 
-const get    = (path)        => request("GET",    path);
-const post   = (path, body)  => request("POST",   path, body);
-const patch  = (path, body)  => request("PATCH",  path, body);
-const del    = (path)        => request("DELETE", path);
+const get = (path) => request("GET", path);
+const post = (path, body) => request("POST", path, body);
+const patch = (path, body) => request("PATCH", path, body);
+const del = (path) => request("DELETE", path);
 
 // ── Alarm API ────────────────────────────────────────────────────────────────
 
 export const alarmApi = {
-  list:    ()          => get("/api/alarms"),
-  create:  (data)      => post("/api/alarms", data),
-  update:  (id, data)  => patch(`/api/alarms/${id}`, data),
-  delete:  (id)        => del(`/api/alarms/${id}`),
-  dismiss: (id)        => post(`/api/alarms/${id}/dismiss`),
-  test:    (id)        => post(`/api/alarms/${id}/test`),
+  list: () => get("/api/alarms"),
+  create: (data) => post("/api/alarms", data),
+  update: (id, data) => patch(`/api/alarms/${id}`, data),
+  delete: (id) => del(`/api/alarms/${id}`),
+  dismiss: (id) => post(`/api/alarms/${id}/dismiss`),
+  test: (id) => post(`/api/alarms/${id}/test`),
 };
 
 // ── Task API ──────────────────────────────────────────────────────────────────
 
 export const taskApi = {
-  list:   ()         => get("/api/tasks"),
-  create: (data)     => post("/api/tasks", data),
+  list: () => get("/api/tasks"),
+  create: (data) => post("/api/tasks", data),
   update: (id, data) => patch(`/api/tasks/${id}`, data),
-  delete: (id)       => del(`/api/tasks/${id}`),
+  delete: (id) => del(`/api/tasks/${id}`),
 };
 
 // ── Sound API ─────────────────────────────────────────────────────────────────
@@ -55,7 +55,7 @@ export const soundApi = {
   upload: async (name, file) => {
     const form = new FormData();
     form.append("file", file);
-    const res = await fetch(`${BASE}/api/sounds/upload?name=${encodeURIComponent(name)}`, {
+    const res = await fetch(`${BASE}/api/sounds?name=${encodeURIComponent(name)}`, {
       method: "POST",
       body: form,
     });
@@ -79,8 +79,8 @@ export const clockApi = {
 
 export class ChronosSocket {
   constructor(handlers = {}) {
-    this._handlers  = handlers;   // { alarm_ring, task_reminder }
-    this._ws        = null;
+    this._handlers = handlers;   // { alarm_ring, task_reminder }
+    this._ws = null;
     this._pingTimer = null;
     this._reconnectDelay = 2000;
   }
@@ -104,7 +104,7 @@ export class ChronosSocket {
           const msg = JSON.parse(e.data);
           const handler = this._handlers[msg.event];
           if (handler) handler(msg);
-        } catch (_) {}
+        } catch (_) { }
       };
 
       this._ws.onclose = () => {
@@ -117,7 +117,7 @@ export class ChronosSocket {
       this._ws.onerror = () => {
         this._ws.close();
       };
-    } catch (_) {}
+    } catch (_) { }
   }
 
   _startPing() {

@@ -5,6 +5,7 @@ import WorldClock from "./components/WorldClock";
 import CalendarView from "./components/CalendarView";
 import TaskPanel from "./components/TaskPanel";
 import { ChronosSocket } from "./api/client";
+import { Howl, Howler } from "howler";
 
 const pad = n => String(n).padStart(2, "0");
 const fmt12 = (h, m, s) => {
@@ -22,6 +23,15 @@ export default function App() {
   const [calendarDate, setCalendarDate] = useState(null);
   const [wsStatus, setWsStatus] = useState("connecting");
   const socketRef = useRef(null);
+  const activeSounds = useRef({});
+
+  const soundMap = {
+    "Classic Beep": "/sounds/classic_beep.wav",
+    "Gentle Bell": "/sounds/gentle_bell.wav",
+    "Alarm Siren": "/sounds/alarm_siren.wav",
+    "Digital Pulse": "/sounds/digital_pulse.wav",
+    "Deep Horn": "/sounds/deep_horn.wav"
+  };
 
   // Local clock tick
   useEffect(() => {
@@ -34,6 +44,31 @@ export default function App() {
     const socket = new ChronosSocket({
       alarm_ring: (msg) => {
         setRingingIds(ids => [...new Set([...ids, msg.alarm_id])]);
+
+        // Play the sound
+        let soundFile = soundMap[msg.sound];
+        if (!soundFile) {
+          // It is a custom sound, assume it's hosted at /api/sounds/files/
+          // The backend generated a filename like "my_sound.mp3" based on the upload name.
+          const backendAPI = import.meta.env.VITE_API_URL || "http://localhost:8000";
+          // We replace spaces but we don't know the exact ext without hitting the API. 
+          // We can pass the exact URL back from the backend as part of msg OR we can just hit a unified test endpoint.
+          // Let's assume the msg includes the `sound_filename` if custom, otherwise we fallback.
+          // Since we didn't add it to msg, let's just use string parsing of msg.sound (hope it's a wav or mp3).
+          const sanitized = msg.sound.replace(/ /g, '_');
+          soundFile = `${backendAPI}/api/sounds/files/${sanitized}.mp3`;
+        }
+
+        if (!activeSounds.current[msg.alarm_id]) {
+          const howl = new Howl({
+            src: [soundFile],
+            loop: true,
+            volume: 1.0,
+            format: ['wav', 'mp3', 'ogg', 'm4a', 'aac']
+          });
+          howl.play();
+          activeSounds.current[msg.alarm_id] = howl;
+        }
       },
       task_reminder: (msg) => {
         setReminderIds(ids => [...new Set([...ids, msg.task_id])]);
@@ -62,6 +97,12 @@ export default function App() {
 
   const handleDismiss = (id) => {
     setRingingIds(ids => ids.filter(x => x !== id));
+
+    // Stop the sound
+    if (activeSounds.current[id]) {
+      activeSounds.current[id].stop();
+      delete activeSounds.current[id];
+    }
   };
 
   const handleAddTaskForDay = (dateStr) => {

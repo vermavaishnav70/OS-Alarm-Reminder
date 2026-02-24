@@ -1,13 +1,3 @@
 {
-  "alarms": [
-    {
-      "id": "dc795167-c2d8-40cf-a652-bc12bc12c652",
-      "time": "10:23",
-      "label": "bi",
-      "sound": "Pakad Madarachod",
-      "repeat": [],
-      "active": true,
-      "ringing": false
-    }
-  ]
+  "alarms": []
 }

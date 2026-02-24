@@ -1,14 +1,14 @@
 {
   "tasks": [
     {
-      "id": "1ac8e1a7-dca2-4d78-a92d-7b22af71b036",
-      "title": "hbjkxh",
+      "id": "1b225947-e43d-45bc-836c-1f2c72056519",
+      "title": "dfg",
       "date": "2026-02-24",
-      "time": "10:10",
-      "reminder": 10,
+      "time": "11:15",
+      "reminder": 5,
       "done": false,
-      "color": "#ec4899",
-      "reminder_fired": false
+      "color": "#10b981",
+      "reminder_fired": true
     }
   ]
 }
