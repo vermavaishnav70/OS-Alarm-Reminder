@@ -10,11 +10,11 @@ services:
         value: 3.10.0
 
   # Frontend (Static Site)
-  - type: static_site
+  - type: web
     name: chronos-frontend
-    env: static
+    runtime: static
     buildCommand: cd frontend && npm install && npm run build
-    publishDir: frontend/dist
+    staticPublishPath: frontend/dist
     envVars:
       - key: VITE_API_URL
         fromService:
